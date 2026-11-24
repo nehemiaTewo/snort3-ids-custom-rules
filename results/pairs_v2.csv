@@ -1,0 +1,154 @@
+capture,sid,rule,expected,alerts,outcome
+dns.pcap,1000001,ICMP echo (oversized in v2),0,0,TN
+dns.pcap,1000002,Inbound Telnet attempt,0,0,TN
+dns.pcap,1000003,TCP SYN port scan,0,0,TN
+dns.pcap,1000004,HTTP /etc/passwd traversal,0,0,TN
+dns.pcap,1000005,HTTP SQL injection,0,0,TN
+dns.pcap,1000006,HTTP high-rate GETs,0,0,TN
+dns.pcap,1000007,Repeated FTP login failures,0,0,TN
+dns.pcap,1000008,HTTP Basic auth cleartext,0,0,TN
+dns.pcap,1000009,Repeated SSH attempts,0,0,TN
+ftp_login.pcap,1000001,ICMP echo (oversized in v2),0,0,TN
+ftp_login.pcap,1000002,Inbound Telnet attempt,0,0,TN
+ftp_login.pcap,1000003,TCP SYN port scan,0,0,TN
+ftp_login.pcap,1000004,HTTP /etc/passwd traversal,0,0,TN
+ftp_login.pcap,1000005,HTTP SQL injection,0,0,TN
+ftp_login.pcap,1000006,HTTP high-rate GETs,0,0,TN
+ftp_login.pcap,1000007,Repeated FTP login failures,0,0,TN
+ftp_login.pcap,1000008,HTTP Basic auth cleartext,0,0,TN
+ftp_login.pcap,1000009,Repeated SSH attempts,0,0,TN
+ftpv6.pcap,1000001,ICMP echo (oversized in v2),0,0,TN
+ftpv6.pcap,1000002,Inbound Telnet attempt,0,0,TN
+ftpv6.pcap,1000003,TCP SYN port scan,0,0,TN
+ftpv6.pcap,1000004,HTTP /etc/passwd traversal,0,0,TN
+ftpv6.pcap,1000005,HTTP SQL injection,0,0,TN
+ftpv6.pcap,1000006,HTTP high-rate GETs,0,0,TN
+ftpv6.pcap,1000007,Repeated FTP login failures,0,0,TN
+ftpv6.pcap,1000008,HTTP Basic auth cleartext,0,0,TN
+ftpv6.pcap,1000009,Repeated SSH attempts,0,0,TN
+http.pcap,1000001,ICMP echo (oversized in v2),0,0,TN
+http.pcap,1000002,Inbound Telnet attempt,0,0,TN
+http.pcap,1000003,TCP SYN port scan,0,0,TN
+http.pcap,1000004,HTTP /etc/passwd traversal,0,0,TN
+http.pcap,1000005,HTTP SQL injection,0,0,TN
+http.pcap,1000006,HTTP high-rate GETs,0,0,TN
+http.pcap,1000007,Repeated FTP login failures,0,0,TN
+http.pcap,1000008,HTTP Basic auth cleartext,0,0,TN
+http.pcap,1000009,Repeated SSH attempts,0,0,TN
+http_basic_auth.pcap,1000001,ICMP echo (oversized in v2),0,0,TN
+http_basic_auth.pcap,1000002,Inbound Telnet attempt,0,0,TN
+http_basic_auth.pcap,1000003,TCP SYN port scan,0,0,TN
+http_basic_auth.pcap,1000004,HTTP /etc/passwd traversal,0,0,TN
+http_basic_auth.pcap,1000005,HTTP SQL injection,0,0,TN
+http_basic_auth.pcap,1000006,HTTP high-rate GETs,0,0,TN
+http_basic_auth.pcap,1000007,Repeated FTP login failures,0,0,TN
+http_basic_auth.pcap,1000008,HTTP Basic auth cleartext,1,31,TP
+http_basic_auth.pcap,1000009,Repeated SSH attempts,0,0,TN
+http_digest_auth.pcap,1000001,ICMP echo (oversized in v2),0,0,TN
+http_digest_auth.pcap,1000002,Inbound Telnet attempt,0,0,TN
+http_digest_auth.pcap,1000003,TCP SYN port scan,0,0,TN
+http_digest_auth.pcap,1000004,HTTP /etc/passwd traversal,0,0,TN
+http_digest_auth.pcap,1000005,HTTP SQL injection,0,0,TN
+http_digest_auth.pcap,1000006,HTTP high-rate GETs,0,0,TN
+http_digest_auth.pcap,1000007,Repeated FTP login failures,0,0,TN
+http_digest_auth.pcap,1000008,HTTP Basic auth cleartext,0,0,TN
+http_digest_auth.pcap,1000009,Repeated SSH attempts,0,0,TN
+http_jpg_download.pcap,1000001,ICMP echo (oversized in v2),0,0,TN
+http_jpg_download.pcap,1000002,Inbound Telnet attempt,0,0,TN
+http_jpg_download.pcap,1000003,TCP SYN port scan,0,0,TN
+http_jpg_download.pcap,1000004,HTTP /etc/passwd traversal,0,0,TN
+http_jpg_download.pcap,1000005,HTTP SQL injection,0,0,TN
+http_jpg_download.pcap,1000006,HTTP high-rate GETs,0,0,TN
+http_jpg_download.pcap,1000007,Repeated FTP login failures,0,0,TN
+http_jpg_download.pcap,1000008,HTTP Basic auth cleartext,0,0,TN
+http_jpg_download.pcap,1000009,Repeated SSH attempts,0,0,TN
+http_pdf_download.pcap,1000001,ICMP echo (oversized in v2),0,0,TN
+http_pdf_download.pcap,1000002,Inbound Telnet attempt,0,0,TN
+http_pdf_download.pcap,1000003,TCP SYN port scan,0,0,TN
+http_pdf_download.pcap,1000004,HTTP /etc/passwd traversal,0,0,TN
+http_pdf_download.pcap,1000005,HTTP SQL injection,0,0,TN
+http_pdf_download.pcap,1000006,HTTP high-rate GETs,0,0,TN
+http_pdf_download.pcap,1000007,Repeated FTP login failures,0,0,TN
+http_pdf_download.pcap,1000008,HTTP Basic auth cleartext,0,0,TN
+http_pdf_download.pcap,1000009,Repeated SSH attempts,0,0,TN
+ipv4frags.pcap,1000001,ICMP echo (oversized in v2),1,1,TP
+ipv4frags.pcap,1000002,Inbound Telnet attempt,0,0,TN
+ipv4frags.pcap,1000003,TCP SYN port scan,0,0,TN
+ipv4frags.pcap,1000004,HTTP /etc/passwd traversal,0,0,TN
+ipv4frags.pcap,1000005,HTTP SQL injection,0,0,TN
+ipv4frags.pcap,1000006,HTTP high-rate GETs,0,0,TN
+ipv4frags.pcap,1000007,Repeated FTP login failures,0,0,TN
+ipv4frags.pcap,1000008,HTTP Basic auth cleartext,0,0,TN
+ipv4frags.pcap,1000009,Repeated SSH attempts,0,0,TN
+nmap_ACK_scan_on_port_80.pcap,1000001,ICMP echo (oversized in v2),0,0,TN
+nmap_ACK_scan_on_port_80.pcap,1000002,Inbound Telnet attempt,0,0,TN
+nmap_ACK_scan_on_port_80.pcap,1000003,TCP SYN port scan,1,0,FN
+nmap_ACK_scan_on_port_80.pcap,1000004,HTTP /etc/passwd traversal,0,0,TN
+nmap_ACK_scan_on_port_80.pcap,1000005,HTTP SQL injection,0,0,TN
+nmap_ACK_scan_on_port_80.pcap,1000006,HTTP high-rate GETs,0,0,TN
+nmap_ACK_scan_on_port_80.pcap,1000007,Repeated FTP login failures,0,0,TN
+nmap_ACK_scan_on_port_80.pcap,1000008,HTTP Basic auth cleartext,0,0,TN
+nmap_ACK_scan_on_port_80.pcap,1000009,Repeated SSH attempts,0,0,TN
+nmap_ACK_scan_on_port_80_2.pcap,1000001,ICMP echo (oversized in v2),0,0,TN
+nmap_ACK_scan_on_port_80_2.pcap,1000002,Inbound Telnet attempt,0,0,TN
+nmap_ACK_scan_on_port_80_2.pcap,1000003,TCP SYN port scan,1,0,FN
+nmap_ACK_scan_on_port_80_2.pcap,1000004,HTTP /etc/passwd traversal,0,0,TN
+nmap_ACK_scan_on_port_80_2.pcap,1000005,HTTP SQL injection,0,0,TN
+nmap_ACK_scan_on_port_80_2.pcap,1000006,HTTP high-rate GETs,0,0,TN
+nmap_ACK_scan_on_port_80_2.pcap,1000007,Repeated FTP login failures,0,0,TN
+nmap_ACK_scan_on_port_80_2.pcap,1000008,HTTP Basic auth cleartext,0,0,TN
+nmap_ACK_scan_on_port_80_2.pcap,1000009,Repeated SSH attempts,0,0,TN
+nmap_OS_scan.pcap,1000001,ICMP echo (oversized in v2),0,0,TN
+nmap_OS_scan.pcap,1000002,Inbound Telnet attempt,1,2,TP
+nmap_OS_scan.pcap,1000003,TCP SYN port scan,1,1,TP
+nmap_OS_scan.pcap,1000004,HTTP /etc/passwd traversal,0,0,TN
+nmap_OS_scan.pcap,1000005,HTTP SQL injection,0,0,TN
+nmap_OS_scan.pcap,1000006,HTTP high-rate GETs,0,0,TN
+nmap_OS_scan.pcap,1000007,Repeated FTP login failures,0,0,TN
+nmap_OS_scan.pcap,1000008,HTTP Basic auth cleartext,0,0,TN
+nmap_OS_scan.pcap,1000009,Repeated SSH attempts,0,0,TN
+nmap_OS_scan_succesful.pcap,1000001,ICMP echo (oversized in v2),0,0,TN
+nmap_OS_scan_succesful.pcap,1000002,Inbound Telnet attempt,1,2,TP
+nmap_OS_scan_succesful.pcap,1000003,TCP SYN port scan,1,1,TP
+nmap_OS_scan_succesful.pcap,1000004,HTTP /etc/passwd traversal,0,0,TN
+nmap_OS_scan_succesful.pcap,1000005,HTTP SQL injection,0,0,TN
+nmap_OS_scan_succesful.pcap,1000006,HTTP high-rate GETs,0,0,TN
+nmap_OS_scan_succesful.pcap,1000007,Repeated FTP login failures,0,0,TN
+nmap_OS_scan_succesful.pcap,1000008,HTTP Basic auth cleartext,0,0,TN
+nmap_OS_scan_succesful.pcap,1000009,Repeated SSH attempts,0,0,TN
+nmap_standard_scan.pcap,1000001,ICMP echo (oversized in v2),0,0,TN
+nmap_standard_scan.pcap,1000002,Inbound Telnet attempt,1,2,TP
+nmap_standard_scan.pcap,1000003,TCP SYN port scan,1,1,TP
+nmap_standard_scan.pcap,1000004,HTTP /etc/passwd traversal,0,0,TN
+nmap_standard_scan.pcap,1000005,HTTP SQL injection,0,0,TN
+nmap_standard_scan.pcap,1000006,HTTP high-rate GETs,0,0,TN
+nmap_standard_scan.pcap,1000007,Repeated FTP login failures,0,0,TN
+nmap_standard_scan.pcap,1000008,HTTP Basic auth cleartext,0,0,TN
+nmap_standard_scan.pcap,1000009,Repeated SSH attempts,0,0,TN
+nmap_zombie_scan.pcap,1000001,ICMP echo (oversized in v2),0,0,TN
+nmap_zombie_scan.pcap,1000002,Inbound Telnet attempt,0,0,TN
+nmap_zombie_scan.pcap,1000003,TCP SYN port scan,1,0,FN
+nmap_zombie_scan.pcap,1000004,HTTP /etc/passwd traversal,0,0,TN
+nmap_zombie_scan.pcap,1000005,HTTP SQL injection,0,0,TN
+nmap_zombie_scan.pcap,1000006,HTTP high-rate GETs,0,0,TN
+nmap_zombie_scan.pcap,1000007,Repeated FTP login failures,0,0,TN
+nmap_zombie_scan.pcap,1000008,HTTP Basic auth cleartext,0,0,TN
+nmap_zombie_scan.pcap,1000009,Repeated SSH attempts,0,0,TN
+normal_mac.pcap,1000001,ICMP echo (oversized in v2),0,0,TN
+normal_mac.pcap,1000002,Inbound Telnet attempt,0,0,TN
+normal_mac.pcap,1000003,TCP SYN port scan,0,0,TN
+normal_mac.pcap,1000004,HTTP /etc/passwd traversal,0,0,TN
+normal_mac.pcap,1000005,HTTP SQL injection,0,0,TN
+normal_mac.pcap,1000006,HTTP high-rate GETs,0,0,TN
+normal_mac.pcap,1000007,Repeated FTP login failures,0,0,TN
+normal_mac.pcap,1000008,HTTP Basic auth cleartext,0,0,TN
+normal_mac.pcap,1000009,Repeated SSH attempts,0,0,TN
+telnet-cooked.pcap,1000001,ICMP echo (oversized in v2),0,0,TN
+telnet-cooked.pcap,1000002,Inbound Telnet attempt,1,1,TP
+telnet-cooked.pcap,1000003,TCP SYN port scan,0,0,TN
+telnet-cooked.pcap,1000004,HTTP /etc/passwd traversal,0,0,TN
+telnet-cooked.pcap,1000005,HTTP SQL injection,0,0,TN
+telnet-cooked.pcap,1000006,HTTP high-rate GETs,0,0,TN
+telnet-cooked.pcap,1000007,Repeated FTP login failures,0,0,TN
+telnet-cooked.pcap,1000008,HTTP Basic auth cleartext,0,0,TN
+telnet-cooked.pcap,1000009,Repeated SSH attempts,0,0,TN

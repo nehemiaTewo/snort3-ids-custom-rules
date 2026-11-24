@@ -1,0 +1,180 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Snort 3 Network IDS: Design, Rules and Evaluation</title>
+<style>
+  @page { size: Letter; margin: 0.8in 0.75in; }
+  body { font-family: "Liberation Sans", Arial, sans-serif; font-size: 10.5pt; line-height: 1.45; color: #000; }
+  h1 { font-size: 20pt; margin: 0 0 4pt; }
+  .sub { margin-bottom: 18pt; font-size: 10pt; }
+  h2 { font-size: 13.5pt; margin: 20pt 0 8pt; page-break-after: avoid; }
+  h3 { font-size: 11pt; margin: 12pt 0 4pt; page-break-after: avoid; }
+  p { margin: 5pt 0; }
+  table { border-collapse: collapse; width: 100%; margin: 6pt 0 10pt; font-size: 9pt; page-break-inside: avoid; }
+  th, td { border: 1px solid #000; padding: 3.5pt 5pt; vertical-align: top; text-align: left; }
+  th { background: #fff; font-weight: bold; }
+  td.n, th.n { text-align: right; }
+  code, .mono { font-family: "DejaVu Sans Mono", monospace; font-size: 8.3pt; }
+  pre { font-family: "DejaVu Sans Mono", monospace; font-size: 7.6pt; background: #fff; border: 1px solid #000; padding: 6pt; white-space: pre-wrap; word-break: break-all; page-break-inside: avoid; }
+  img { max-width: 100%; }
+  .fig { text-align: center; margin: 8pt 0 12pt; page-break-inside: avoid; }
+  .cap { font-size: 8.8pt; margin-top: 3pt; }
+  .rule { margin: 10pt 0; page-break-inside: avoid; }
+  .ok, .bad { font-weight: bold; } .na { font-style: italic; }
+</style></head>
+<body>
+
+<h1>Network Intrusion Detection with Snort 3</h1>
+<div class="sub">Nehemia Tewodros</div>
+
+<p><b>Summary.</b> I built a Snort 3.12.2.0 IDS, wrote nine custom rules covering all eight required categories, and evaluated them against 17 traffic captures: 16 public samples plus a 60-second benign baseline recorded on my own laptop. After tuning, the IDS detected 9 of 12 expected (rule, capture) detections with no false positives, giving <b>precision 1.00</b> and <b>recall 0.75</b>. Tuning also cut total alert volume from <b>6,010 to 42</b>. All three misses are Nmap scan types (ACK and idle/zombie) that never send the SYN packets my scan rule keys on. Five of the nine rules had no positive test traffic in this dataset. They are syntax-validated and produced no false positives, but their detection rate is untested, and I report them that way rather than estimating a number.</p>
+
+
+<h2>1. IDS Architecture</h2>
+<p><b>Environment.</b> Snort 3.12.2.0 with DAQ 3.0.27, LuaJIT 2.1 and libpcap 1.10.4, built from the official <span class="mono">snort3/snort3</span> and <span class="mono">snort3/libdaq</span> sources on Ubuntu Linux (x86_64). I first tried to install Snort on my own laptop, an Intel MacBook Pro running macOS 15.7.7, with <span class="mono">brew install snort</span>. The install failed because Homebrew no longer supports Intel macOS ("Tier 3"): it ships no prebuilt packages there, and the source build of the cmake dependency failed. I therefore ran the IDS in a Linux lab environment. The benign baseline capture was still recorded on the Mac with <span class="mono">tcpdump</span>.</p>
+<p><b>Mode.</b> Snort runs in passive IDS mode, reading captures with <span class="mono">-r</span> (PCAP readback through the <span class="mono">pcap</span> DAQ) and writing alerts in <span class="mono">alert_fast</span> format. Packets pass through the decoder, IP defragmentation and TCP stream reassembly. The <span class="mono">wizard</span> then identifies the service and hands traffic to the matching inspector (<span class="mono">http_inspect</span>, <span class="mono">ftp_server</span>, <span class="mono">telnet</span>). The detection engine evaluates the custom rules, and the <span class="mono">event_filter</span> limits repetitive alerts before they are logged.</p>
+<p><b>Configuration.</b> <span class="mono">config/snort.lua</span> is the stock Snort 3 configuration with two edits: <span class="mono">HOME_NET = '192.168.56.0/24'</span> and <span class="mono">EXTERNAL_NET = '!$HOME_NET'</span>, plus an <span class="mono">include 'tuning_v2.lua'</span> for alert-volume limits. For evaluation, <span class="mono">snort_eval.lua</span> sets both variables to <span class="mono">any</span>, because the public captures use many unrelated address ranges. Rule direction (client → server ports) still applies. Section 6 discusses this as a limitation.</p>
+<div class="fig"><img src="architecture.png"><div class="cap">Figure 1. IDS architecture: traffic source → traffic capture (PCAP) → Snort 3 IDS, which applies the detection rules → alerts/logs.</div></div>
+
+<h2>2. Detection Rules</h2>
+<p>All rules live in <span class="mono">rules/local.rules</span> (SIDs 1000001 to 1000009, local range). <span class="mono">rules/local_v1.rules</span> keeps the pre-tuning versions of rules 1 and 6. Each rule was written for this project; none is copied from the community ruleset.</p>
+
+<table>
+<tr><th>#</th><th>Category</th><th>SID</th><th>Detects</th><th>Proto</th><th>Source → Destination</th><th>Ports</th></tr>
+<tr><td>1</td><td>ICMP</td><td>1000001</td><td>Oversized ICMP echo request</td><td>ICMP</td><td>EXTERNAL → HOME</td><td>n/a</td></tr>
+<tr><td>2</td><td>TCP</td><td>1000002</td><td>Inbound Telnet connection attempt</td><td>TCP</td><td>EXTERNAL → HOME</td><td>any → 23</td></tr>
+<tr><td>3</td><td>Reconnaissance</td><td>1000003</td><td>TCP SYN port scan (rate-based)</td><td>TCP</td><td>EXTERNAL → HOME</td><td>any → any</td></tr>
+<tr><td>4</td><td>HTTP / application</td><td>1000004</td><td>Path traversal to /etc/passwd</td><td>HTTP</td><td>EXTERNAL → HOME</td><td>HTTP service (any)</td></tr>
+<tr><td>5</td><td>Suspicious payload</td><td>1000005</td><td>SQL injection (UNION … SELECT) in URI</td><td>HTTP</td><td>EXTERNAL → HOME</td><td>HTTP service (any)</td></tr>
+<tr><td>6</td><td>Repeated requests</td><td>1000006</td><td>High-rate HTTP GETs from one source</td><td>HTTP</td><td>EXTERNAL → HOME</td><td>HTTP service (any)</td></tr>
+<tr><td>7</td><td>Authentication</td><td>1000007</td><td>Repeated FTP login failures (530)</td><td>TCP/FTP</td><td>HOME:21 → EXTERNAL</td><td>21 → any</td></tr>
+<tr><td>8</td><td>Additional (auth)</td><td>1000008</td><td>HTTP Basic credentials in cleartext</td><td>HTTP</td><td>EXTERNAL → HOME</td><td>HTTP service (any)</td></tr>
+<tr><td>9</td><td>Additional (auth)</td><td>1000009</td><td>Repeated SSH connection attempts</td><td>TCP</td><td>EXTERNAL → HOME</td><td>any → 22</td></tr>
+</table>
+
+<div class="rule"><b>Rule 1: Oversized ICMP echo request (SID 1000001, rev 2)</b>
+<pre>alert icmp $EXTERNAL_NET any -> $HOME_NET any ( msg:"LOCAL ICMP oversized echo request from external host"; itype:8; dsize:>800; classtype:attempted-recon; sid:1000001; rev:2; )</pre>
+<p>ICMP echo requests (type 8) from outside the network carrying more than 800 bytes of payload. Standard ping tools send 32 to 64 bytes. Very large echo payloads point to ICMP tunneling (data smuggled inside pings), ping-flood or bandwidth abuse, or fragmentation-based attacks.</p>
+<p><i>How it matches:</i> <span class="mono">itype:8</span> (echo request) and <span class="mono">dsize:&gt;800</span>. Snort reassembles IP fragments first, so the size check sees the full payload. <i>Expected alert and test capture:</i> "LOCAL ICMP oversized echo request…" on <span class="mono">ipv4frags.pcap</span> (1,384-byte echo, fragmented). Silent on normal pings and on Nmap's 120/150-byte OS-detection probes.</p></div>
+
+<div class="rule"><b>Rule 2: Inbound Telnet connection attempt (SID 1000002)</b>
+<pre>alert tcp $EXTERNAL_NET any -> $HOME_NET 23 ( msg:"LOCAL TCP inbound Telnet connection attempt"; flags:S; classtype:policy-violation; sid:1000002; rev:1; )</pre>
+<p>A TCP SYN (new connection) from outside the network to port 23. Telnet sends usernames, passwords and commands in cleartext. Exposed Telnet is a long-standing target for credential theft and botnets (e.g. Mirai), so any inbound attempt is either a policy violation or probing.</p>
+<p><i>How it matches:</i> Destination port 23 and <span class="mono">flags:S</span> (SYN only). Matching the SYN alerts once per connection rather than once per keystroke packet. <i>Expected alert and test capture:</i> <span class="mono">telnet-cooked.pcap</span> (a real Telnet session), plus the three Nmap SYN/OS scans, which probe port 23.</p></div>
+
+<div class="rule"><b>Rule 3: TCP SYN port scan (SID 1000003)</b>
+<pre>alert tcp $EXTERNAL_NET any -> $HOME_NET any ( msg:"LOCAL SCAN possible TCP SYN port scan"; flags:S; detection_filter:track by_src, count 20, seconds 5; classtype:attempted-recon; sid:1000003; rev:1; )</pre>
+<p>One source sending more than 20 connection attempts (SYNs) within 5 seconds, to any ports. Legitimate clients open a handful of connections to known services. A burst of SYNs across many ports is the signature of port scanning, the reconnaissance step that precedes most attacks.</p>
+<p><i>How it matches:</i> <span class="mono">flags:S</span> with <span class="mono">detection_filter</span> tracked by source address. In v2, an <span class="mono">event_filter</span> (limit 1 per source per 60 s) stops a single scan from producing thousands of alerts. <i>Expected alert and test capture:</i> The Nmap standard and OS-detection scans. The ACK and idle scans are also labeled as scanning, and this rule is expected to miss them (see Section 5).</p></div>
+
+<div class="rule"><b>Rule 4: HTTP path traversal to /etc/passwd (SID 1000004)</b>
+<pre>alert http $EXTERNAL_NET any -> $HOME_NET any ( msg:"LOCAL HTTP path traversal request for /etc/passwd"; flow:to_server,established; http_uri; content:"/etc/passwd",nocase; classtype:web-application-attack; sid:1000004; rev:1; )</pre>
+<p>An HTTP request whose URI references <span class="mono">/etc/passwd</span>. No legitimate web request asks a server for its system account file. The string appears in directory-traversal and local-file-inclusion attempts that try to escape the web root.</p>
+<p><i>How it matches:</i> Established client-to-server HTTP flow, matched in the <span class="mono">http_uri</span> buffer. That buffer is normalized by <span class="mono">http_inspect</span>, so percent-encoded variants (<span class="mono">%2Fetc%2Fpasswd</span>) and <span class="mono">../</span> sequences are decoded before matching. The rule uses the <span class="mono">http</span> service keyword, so it works on any port the wizard identifies as HTTP, not just port 80. <i>Expected alert and test capture:</i> Any HTTP request for the file. No such request exists in this test set, so the rule is <b>untested for detection</b>. It produced 0 alerts on the 5 benign HTTP captures.</p></div>
+
+<div class="rule"><b>Rule 5: SQL injection keywords in URI (SID 1000005)</b>
+<pre>alert http $EXTERNAL_NET any -> $HOME_NET any ( msg:"LOCAL HTTP SQL injection UNION SELECT in URI"; flow:to_server,established; http_uri; content:"union",nocase; content:"select",nocase,distance 0; classtype:web-application-attack; sid:1000005; rev:1; )</pre>
+<p>The keyword <span class="mono">union</span> followed (anywhere later) by <span class="mono">select</span> in the request URI. UNION-based SQL injection appends a second query to read data from other tables. These SQL keywords have no business in a normal URL's query string.</p>
+<p><i>How it matches:</i> Two case-insensitive contents in the normalized URI. <span class="mono">distance 0</span> requires "select" to appear after "union", which avoids matching unrelated text that merely contains both words in the other order. <i>Expected alert and test capture:</i> No SQL-injection capture in this set, so the rule is <b>untested for detection</b>. 0 alerts on benign HTTP, including a long ad-server query string in <span class="mono">http.pcap</span>.</p></div>
+
+<div class="rule"><b>Rule 6: High-rate HTTP GET requests (SID 1000006, rev 2)</b>
+<pre>alert http $EXTERNAL_NET any -> $HOME_NET any ( msg:"LOCAL HTTP high-rate GET requests from single source"; flow:to_server,established; http_method; content:"GET"; detection_filter:track by_src, count 200, seconds 10; classtype:attempted-dos; sid:1000006; rev:2; )</pre>
+<p>More than 200 HTTP GET requests from one source within 10 seconds. Sustained request rates far above human browsing indicate application-layer flooding (HTTP DoS), aggressive scraping, or automated content discovery and brute forcing.</p>
+<p><i>How it matches:</i> Method buffer equals GET, rate-limited by source with <span class="mono">detection_filter</span>. Version 1 used 50 per 10 s. I raised it to 200 because a single modern page load can fetch 50+ assets, so 50 risks flagging ordinary visitors. This tuning is preventive: no capture here exercised either threshold. <i>Expected alert and test capture:</i> None in this test set (<b>untested for detection</b>). 0 alerts on all benign HTTP.</p></div>
+
+<div class="rule"><b>Rule 7: Repeated FTP login failures (SID 1000007)</b>
+<pre>alert tcp $HOME_NET 21 -> $EXTERNAL_NET any ( msg:"LOCAL AUTH repeated FTP login failures"; flow:to_client,established; content:"530 ",depth 4; detection_filter:track by_dst, count 5, seconds 60; classtype:unsuccessful-user; sid:1000007; rev:1; )</pre>
+<p>The FTP server answering one client with "530" (login incorrect) more than 5 times within 60 seconds. One or two failures are normal typos. A rapid run of failures to the same client is password guessing.</p>
+<p><i>How it matches:</i> The rule watches the <b>server's reply</b>, not the client's attempt, so it counts only failures. <span class="mono">depth 4</span> anchors "530 " at the start of the response line. Tracking is <span class="mono">by_dst</span> because in the server's reply the attacker is the destination. <i>Expected alert and test capture:</i> Neither FTP capture contains a single 530 (both show successful 230 logins), so the rule is <b>untested for detection</b>. It correctly stayed silent on successful logins.</p></div>
+
+<div class="rule"><b>Rule 8: HTTP Basic credentials in cleartext (SID 1000008), additional rule</b>
+<pre>alert http $EXTERNAL_NET any -> $HOME_NET any ( msg:"LOCAL HTTP Basic auth credentials sent in cleartext"; flow:to_server,established; http_header:field authorization; content:"Basic ",depth 6; classtype:policy-violation; sid:1000008; rev:1; )</pre>
+<p>An HTTP request carrying an <span class="mono">Authorization: Basic …</span> header over unencrypted HTTP. Basic authentication only base64-encodes <span class="mono">username:password</span>, which is trivially reversible. Over plain HTTP, anyone on the path can harvest the credentials.</p>
+<p><i>How it matches:</i> Restricted to the <span class="mono">authorization</span> header field. "Basic " must start the field, so Digest and NTLM authentication, which do not expose the password, are not flagged. <i>Expected alert and test capture:</i> <span class="mono">http_basic_auth.pcap</span> fires on all 31 requests carrying the header. <span class="mono">http_digest_auth.pcap</span> must not fire.</p></div>
+
+<div class="rule"><b>Rule 9: Repeated SSH connection attempts (SID 1000009), additional rule</b>
+<pre>alert tcp $EXTERNAL_NET any -> $HOME_NET 22 ( msg:"LOCAL AUTH repeated SSH connection attempts"; flags:S; detection_filter:track by_src, count 5, seconds 60; classtype:attempted-user; sid:1000009; rev:1; )</pre>
+<p>More than 5 new SSH connections from one external source within 60 seconds. SSH is encrypted, so failed logins cannot be seen in the payload. Password-guessing tools, however, typically open a new connection for each attempt or small batch, so the connection rate is a usable proxy.</p>
+<p><i>How it matches:</i> SYN to port 22, rate-limited by source. The v2 event filter limits it to one alert per source per minute. <i>Expected alert and test capture:</i> No SSH brute-force capture in this set (<b>untested for detection</b>). The Nmap scans touch port 22 only twice each, under the threshold, and correctly did not trigger it.</p></div>
+
+<h2>3. Experimental Methodology</h2>
+<p><b>Test data.</b> I used 17 captures with known content and no synthetic attack traffic. From the Wireshark sample-capture library I took five: an ICMP echo with a 1,384-byte payload sent in fragments (<span class="mono">ipv4frags.pcap</span>), a Telnet session (<span class="mono">telnet-cooked.pcap</span>), and three benign captures of normal web browsing, DNS lookups and an FTP session over IPv6. The same library's Nmap collection added six real scans: a default SYN scan, two OS-detection scans (one failed, one successful), two ACK scans of port 80 (the second using fragmentation and a spoofed source address to evade an IDS), and an idle/zombie scan. From the BruteShark project's examples I took an HTTP session that sends Basic-authentication credentials 31 times, plus four contrast cases: Digest authentication, a successful FTP login, and two ordinary file downloads. Finally, I recorded 60 seconds of my own browsing with <span class="mono">tcpdump</span> (<span class="mono">normal_mac.pcap</span>, 9,287 packets, mostly TLS and QUIC) as a benign baseline.</p>
+<p><b>Ground truth.</b> I labeled each capture from its published description and verified the label with <span class="mono">tshark</span> before running Snort: SYN counts, ports probed, ICMP payload sizes, FTP reply codes and Authorization headers. Labels are stored in <span class="mono">ground_truth.csv</span>. For example, every Nmap SYN/OS scan sends SYNs to port 23, so those captures are labeled positive for the Telnet rule. The ACK scans send no SYNs, but they are still reconnaissance, so they are labeled positive for the scan rule even though I expected it to miss them.</p>
+<p><b>Unit of measurement.</b> Each (rule, capture) pair is one test case: 9 rules × 17 captures = 153 cases per rule version. A case is a TP if the capture contains the behavior and the rule fired at least once, FN if it contains the behavior and the rule stayed silent, FP if the rule fired without the behavior, and TN otherwise. I chose pairs rather than individual packets because alert counts depend on thresholds and filters, while the analyst's question is "was this activity detected?"</p>
+<p><b>Procedure.</b> <span class="mono">scripts/run_tests.sh</span> runs Snort over every capture twice, first with the v1 rules and config and then with v2 (tuned rules plus <span class="mono">tuning_v2.lua</span>), using <span class="mono">snort -c &lt;conf&gt; -R &lt;rules&gt; -r &lt;pcap&gt; -A alert_fast -q -k none</span>. <span class="mono">-k none</span> disables checksum verification, because captures taken on the sending host often contain offloaded (unset) checksums that would otherwise make Snort discard packets. <span class="mono">scripts/score.py</span> compares the alert files to the ground truth and writes <span class="mono">results/</span>.</p>
+
+<h2>4. Results</h2>
+<h3>4.1 Results by traffic scenario (tuned v2 rules)</h3>
+<table>
+<tr><th>Traffic scenario</th><th>Capture(s)</th><th>Expected detection</th><th>Detected?</th><th>Alert generated</th><th>False positive?</th></tr>
+<tr><td>ICMP activity (oversized echo)</td><td>ipv4frags</td><td>Yes</td><td class="ok">Yes</td><td>1 × SID 1000001</td><td>No (v1: <span class="bad">Yes</span>, see 5.1)</td></tr>
+<tr><td>TCP activity (Telnet)</td><td>telnet-cooked; 3 Nmap SYN/OS scans</td><td>Yes</td><td class="ok">Yes (4/4)</td><td>1 to 2 × SID 1000002 each</td><td>No</td></tr>
+<tr><td>Scanning (SYN-based)</td><td>nmap standard, OS, OS-successful</td><td>Yes</td><td class="ok">Yes (3/3)</td><td>1 × SID 1000003 each (v1: ~1,980 each)</td><td>No</td></tr>
+<tr><td>Scanning (ACK / idle)</td><td>2 ACK scans, zombie scan</td><td>Yes</td><td class="bad">No (0/3)</td><td>none</td><td>No</td></tr>
+<tr><td>HTTP activity (benign)</td><td>http, jpg & pdf downloads, digest auth</td><td>No</td><td>No</td><td>none</td><td>No</td></tr>
+<tr><td>HTTP attack: traversal (rule 4)</td><td><i>no positive sample</i></td><td>n/a</td><td class="na">Not tested</td><td>none</td><td>No</td></tr>
+<tr><td>Suspicious payload: SQLi (rule 5)</td><td><i>no positive sample</i></td><td>n/a</td><td class="na">Not tested</td><td>none</td><td>No</td></tr>
+<tr><td>Repeated requests (rule 6)</td><td><i>no positive sample</i></td><td>n/a</td><td class="na">Not tested</td><td>none</td><td>No</td></tr>
+<tr><td>Authentication: HTTP Basic (rule 8)</td><td>http_basic_auth</td><td>Yes</td><td class="ok">Yes</td><td>31 × SID 1000008</td><td>No (Digest correctly ignored)</td></tr>
+<tr><td>Authentication: FTP (rule 7)</td><td>ftp_login, ftpv6 (successful logins)</td><td>No</td><td>No</td><td>none</td><td>No</td></tr>
+<tr><td>Authentication: SSH (rule 9)</td><td><i>no positive sample</i></td><td>n/a</td><td class="na">Not tested</td><td>none</td><td>No</td></tr>
+<tr><td>Benign baseline</td><td>normal_mac, dns</td><td>No</td><td>No</td><td>none</td><td>No</td></tr>
+</table>
+
+<h3>4.2 Confusion matrix and metrics (153 rule × capture cases per version)</h3>
+<table>
+<tr><th>Version</th><th class="n">TP</th><th class="n">FP</th><th class="n">FN</th><th class="n">TN</th><th class="n">Precision<br>TP/(TP+FP)</th><th class="n">Recall / detection rate<br>TP/(TP+FN)</th><th class="n">Total alerts</th></tr>
+<tr><td>v1 (before tuning)</td><td class="n">9</td><td class="n">2</td><td class="n">3</td><td class="n">139</td><td class="n">0.818</td><td class="n">0.750</td><td class="n">6,010</td></tr>
+<tr><td><b>v2 (tuned)</b></td><td class="n"><b>9</b></td><td class="n"><b>0</b></td><td class="n"><b>3</b></td><td class="n"><b>141</b></td><td class="n"><b>1.000</b></td><td class="n"><b>0.750</b></td><td class="n"><b>42</b></td></tr>
+</table>
+<p>The TN count is large because most rules are irrelevant to most captures, so accuracy would look inflated (97 to 98%). Precision and recall are the meaningful figures. Recall covers only the four rules that had positive samples (1, 2, 3 and 8). Rules 4 to 7 and 9 contribute only TNs, which shows they did not misfire on benign traffic but says nothing about whether they would catch an attack.</p>
+
+<h3>4.3 Tuning</h3>
+<p><b>Rule 1 (ICMP).</b> Version 1 matched every external echo request (<span class="mono">itype:8</span> alone), so it fired on the 120- and 150-byte probes that Nmap's OS detection sends, and it would fire on any ordinary ping. Adding <span class="mono">dsize:&gt;800</span> made it describe the abnormal property instead of ICMP itself. False positives fell from 2 to 0 and precision rose from 0.818 to 1.000, while the real oversized echo was still detected.</p>
+<p><b>Alert volume.</b> <span class="mono">detection_filter</span> raises an alert on every packet past the threshold, so a single scan produced about 1,980 identical alerts. I added an <span class="mono">event_filter</span> (<span class="mono">config/tuning_v2.lua</span>) limiting rules 3, 7 and 9 to one alert per source (or destination) per 60 seconds. Scan alerts dropped from 5,953 to 3 and total alerts from 6,010 to 42, with no change in true positives.</p>
+<p><b>Rule 6 (request flood).</b> I raised the threshold from 50 to 200 GETs per 10 seconds as a precaution, because one modern page load can request 50+ assets. No capture in this set reached either threshold, so the effect could not be measured.</p>
+
+<h2>5. False Positives and False Negatives</h2>
+<h3>5.1 False positives (v1)</h3>
+<p>Both v1 false positives came from rule 1 on the Nmap OS-detection captures (16 alerts on <span class="mono">nmap_OS_scan</span>, 2 on <span class="mono">nmap_OS_scan_succesful</span>). Nmap's OS fingerprinting sends ICMP echo requests with 120- and 150-byte payloads. The v1 rule matched any echo request, so it flagged these probes as the ICMP-abuse behavior it was meant to catch. They are part of a scan, but that scan was already detected by rule 3, and the same v1 rule would also fire on every ordinary ping from outside the network. The root cause was a rule condition (<span class="mono">itype:8</span> alone) that described ICMP itself rather than the abnormal property. Adding a size condition fixed it. My own baseline happened to contain no pings, so the FP evidence comes only from the Nmap captures.</p>
+<h3>5.2 False negatives (v1 and v2)</h3>
+<p><b>ACK scans (2 captures).</b> <span class="mono">nmap -sA</span> sends bare ACK packets to map firewall rules. The scan rule requires <span class="mono">flags:S</span>, so it is blind to them by design. The second capture adds fragmentation (<span class="mono">-f</span>) and a spoofed source (<span class="mono">-S</span>), techniques its author used specifically to evade IDS. Even an ACK-aware rule would attribute it to the wrong host.</p>
+<p><b>Idle (zombie) scan.</b> In <span class="mono">nmap -sI</span>, the target receives only <b>2</b> SYNs, spoofed from the zombie's address. The rest of the traffic is the attacker probing the zombie's IP ID counter. Two SYNs are far below the 20-in-5-seconds threshold, and the true attacker never talks to the target at all. A rate-based rule cannot catch a scan that sends almost no packets to the victim.</p>
+<p>These misses show the core limit of threshold signatures: they detect the noisy default behavior of a tool, and an attacker who changes the scan type or slows down slips under them.</p>
+
+<h2>6. Limitations</h2>
+<ul>
+<li><b>Untested rules.</b> Five of nine rules (traversal, SQLi, HTTP flood, FTP failures, SSH) had no positive test traffic among the public captures I found within the assignment window. Their only demonstrated property is that they did not misfire on benign traffic.</li>
+<li><b>Unknown attacks.</b> Every rule is a signature or threshold for a behavior I anticipated. Novel exploits, or known ones using different strings (e.g. <span class="mono">/etc/shadow</span>, error-based or blind SQLi), produce no alert.</li>
+<li><b>Encrypted traffic.</b> My baseline capture was dominated by TLS and QUIC. Content rules (4, 5, 8) see nothing inside HTTPS, so the same traversal or SQLi request over port 443 would be missed. Rule 9 only counts SSH connections because SSH payloads are encrypted.</li>
+<li><b>Evasion.</b> Low-and-slow scanning stays under detection_filter thresholds. Alternative scan types and source spoofing defeat rule 3 (Section 5.2). Payload obfuscation such as SQL comments (<span class="mono">UNION/**/SELECT</span>) or alternative encodings that the normalizer does not undo can defeat content rules.</li>
+<li><b>Rule quality.</b> Fixed thresholds (20/5 s, 200/10 s, 5/60 s) are judgment calls rather than values learned from my network's traffic. Rule 8 alerts on every request (31 alerts for one user session); it needs an event filter like the scan rule.</li>
+<li><b>False positives.</b> Vulnerability scanners, load balancers' health checks, NAT gateways (many users behind one source address) and busy API clients could trip the rate-based rules.</li>
+<li><b>Limited visibility.</b> Testing used offline readback of small captures, not live traffic at line rate. The evaluation config used <span class="mono">any</span> for HOME_NET and EXTERNAL_NET, so the deployment config's direction checks were not exercised. The dataset is small (17 captures), so one changed result moves precision or recall noticeably.</li>
+</ul>
+
+<h2>7. Recommendations</h2>
+<ul>
+<li><b>Broaden scan detection:</b> add rules for ACK, FIN, NULL and Xmas scans, and enable Snort 3's <span class="mono">port_scan</span> inspector, which tracks distinct ports and hosts per source over longer windows and catches slower scans.</li>
+<li><b>Measure the untested rules</b> with labeled attack datasets (e.g. CIC-IDS2017 / UNSW-NB15 web-attack and brute-force subsets) to estimate their real detection rates.</li>
+<li><b>Baseline before thresholding:</b> derive per-source request and connection rates from a week of real traffic and set thresholds at a high percentile, instead of guessing.</li>
+<li><b>Restore network context:</b> set accurate HOME_NET, server variables (<span class="mono">$HTTP_SERVERS</span>, <span class="mono">$SSH_SERVERS</span>) and suppression lists for known scanners and monitoring hosts.</li>
+<li><b>Handle encryption:</b> deploy the sensor behind a TLS-terminating proxy or load balancer, and pair Snort with endpoint and authentication logs (e.g. SSH <span class="mono">auth.log</span>) for activity the network cannot see.</li>
+<li><b>Reduce alert noise further:</b> add event filters to rule 8 and to any rule that fires per packet, and forward alerts to a SIEM for correlation (scan → login attempts from the same source).</li>
+<li><b>Layer the defenses:</b> combine these custom rules with the maintained Talos/community ruleset, and consider anomaly-based detection to cover unknown attacks.</li>
+</ul>
+
+<h2>Appendix A: Screenshots (evidence for Part 1)</h2>
+<p>All screenshots are real terminal output from the lab environment, rendered to images by <span class="mono">scripts/render_terminal.py</span>.</p>
+<div class="fig"><img src="../screenshots/01_snort_version.png"><div class="cap">A1. Snort installation and version (3.12.2.0, DAQ 3.0.27).</div></div>
+<div class="fig"><img src="../screenshots/02_config_validation.png"><div class="cap">A2. Configuration and rule validation (<span class="mono">-T</span>): Snort successfully validated the configuration with 0 warnings.</div></div>
+<div class="fig"><img src="../screenshots/03_configuration.png"><div class="cap">A3. Network variables, v2 event filter, and 9 custom rules loaded.</div></div>
+<div class="fig"><img src="../screenshots/04_pcap_inspection_run.png"><div class="cap">A4. Successful execution: Snort reading all 17 PCAP files with v1 and v2 rules.</div></div>
+<div class="fig"><img src="../screenshots/05_alerts.png"><div class="cap">A5. Sample alerts in alert_fast format.</div></div>
+<div class="fig"><img src="../screenshots/06_scoring.png"><div class="cap">A6. Evaluation output: confusion matrix and per-rule outcomes.</div></div>
+
+<h2>Appendix B: Sources of test data</h2>
+<ul>
+<li>Wireshark Sample Captures: https://wiki.wireshark.org/SampleCaptures (http.cap, telnet-cooked.pcap, ipv4frags.pcap, dns.cap, FTPv6-1.cap, NMap-Captures.zip)</li>
+<li>BruteShark Pcap_Examples: https://github.com/odedshimon/BruteShark/tree/master/Pcap_Examples</li>
+<li>Snort 3 sources: https://github.com/snort3/snort3 and https://github.com/snort3/libdaq</li>
+</ul>
+</body></html>

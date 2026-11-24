@@ -1,0 +1,1 @@
+10/02-08:03:32.535197 [**] [1:1000001:1] "LOCAL ICMP echo request from external host" [**] [Classification: Attempted Information Leak] [Priority: 2] {ICMP} 2.1.1.2 -> 2.1.1.1

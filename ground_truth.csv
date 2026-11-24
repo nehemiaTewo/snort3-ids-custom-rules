@@ -1,0 +1,13 @@
+capture,sid,expected,note
+ipv4frags.pcap,1000001,1,ICMP echo request with 1384-byte payload (fragmented)
+telnet-cooked.pcap,1000002,1,Telnet session opened by 192.168.0.2 to port 23
+nmap_standard_scan.pcap,1000003,1,nmap default SYN scan (~2000 SYNs)
+nmap_standard_scan.pcap,1000002,1,scan sends SYNs to Telnet port 23
+nmap_OS_scan.pcap,1000003,1,nmap -O run includes SYN port scan
+nmap_OS_scan.pcap,1000002,1,scan sends SYNs to Telnet port 23
+nmap_OS_scan_succesful.pcap,1000003,1,nmap -O run includes SYN port scan
+nmap_OS_scan_succesful.pcap,1000002,1,scan sends SYNs to Telnet port 23
+nmap_ACK_scan_on_port_80.pcap,1000003,1,nmap -sA ACK scan (reconnaissance)
+nmap_ACK_scan_on_port_80_2.pcap,1000003,1,nmap -sA ACK scan with fragmentation and spoofed source (IDS evasion)
+nmap_zombie_scan.pcap,1000003,1,nmap -sI idle/zombie scan (reconnaissance)
+http_basic_auth.pcap,1000008,1,HTTP request carrying Authorization: Basic header (BruteShark sample)

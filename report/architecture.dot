@@ -1,0 +1,12 @@
+digraph IDS {
+  rankdir=LR; bgcolor="white"; nodesep=0.4; ranksep=0.6;
+  node [shape=box, style="rounded", fontname="Liberation Sans", fontsize=11, color="black", fontcolor="black", penwidth=1.2];
+  edge [color="black", arrowsize=0.7];
+  src   [label="Traffic source\npublic sample captures +\nbenign laptop baseline"];
+  pcap  [label="Traffic capture / PCAP\npcaps/ (17 files)", shape=folder];
+  snort [label="Snort 3 IDS\n(3.12.2.0, PCAP readback)", penwidth=2];
+  rules [label="Detection rules\nrules/local.rules", shape=note];
+  alerts[label="Alerts / logs\nalerts/ (alert_fast)", shape=cylinder];
+  src -> pcap -> snort -> alerts;
+  rules -> snort;
+}

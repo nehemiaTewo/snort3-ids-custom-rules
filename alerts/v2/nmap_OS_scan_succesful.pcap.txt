@@ -1,0 +1,3 @@
+02/07-06:14:14.555820 [**] [1:1000003:1] "LOCAL SCAN possible TCP SYN port scan" [**] [Classification: Attempted Information Leak] [Priority: 2] {TCP} 192.168.100.103:44277 -> 192.168.100.101:143
+02/07-06:14:14.658044 [**] [1:1000002:1] "LOCAL TCP inbound Telnet connection attempt" [**] [Classification: Potential Corporate Privacy Violation] [Priority: 1] {TCP} 192.168.100.103:44276 -> 192.168.100.101:23
+02/07-06:14:14.759802 [**] [1:1000002:1] "LOCAL TCP inbound Telnet connection attempt" [**] [Classification: Potential Corporate Privacy Violation] [Priority: 1] {TCP} 192.168.100.103:44277 -> 192.168.100.101:23

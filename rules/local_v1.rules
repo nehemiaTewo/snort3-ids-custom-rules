@@ -1,0 +1,51 @@
+# =====================================================================
+# Custom Snort 3 detection rules: Network IDS lab
+# Author: Nehemia Tewodros
+# SID range 1000001 to 1000099 is reserved for local rules.
+# HOME_NET / EXTERNAL_NET are defined in config/snort.lua.
+# =====================================================================
+
+# --- 1. ICMP-based activity -----------------------------------------
+# Oversized ICMP echo request. Normal pings are small (56 to 64 bytes of data);
+# very large echo payloads are typical of ICMP tunneling or ping floods.
+# (v1: before tuning)
+alert icmp $EXTERNAL_NET any -> $HOME_NET any ( msg:"LOCAL ICMP echo request from external host"; itype:8; classtype:attempted-recon; sid:1000001; rev:1; )
+
+# --- 2. TCP-based activity ------------------------------------------
+# Inbound connection attempt to Telnet (23). Telnet sends credentials in
+# cleartext and should never be exposed to external hosts.
+alert tcp $EXTERNAL_NET any -> $HOME_NET 23 ( msg:"LOCAL TCP inbound Telnet connection attempt"; flags:S; classtype:policy-violation; sid:1000002; rev:1; )
+
+# --- 3. Reconnaissance / scanning -----------------------------------
+# Many SYNs from one source in a short window = likely port scan.
+# Fires once a single source has sent more than 20 SYNs within 5 seconds.
+alert tcp $EXTERNAL_NET any -> $HOME_NET any ( msg:"LOCAL SCAN possible TCP SYN port scan"; flags:S; detection_filter:track by_src, count 20, seconds 5; classtype:attempted-recon; sid:1000003; rev:1; )
+
+# --- 4. HTTP / application-layer activity ---------------------------
+# Request for /etc/passwd in the URI: path-traversal attempt against the web server.
+# http_uri is the normalized URI, so percent-encoded variants are decoded before matching.
+alert http $EXTERNAL_NET any -> $HOME_NET any ( msg:"LOCAL HTTP path traversal request for /etc/passwd"; flow:to_server,established; http_uri; content:"/etc/passwd",nocase; classtype:web-application-attack; sid:1000004; rev:1; )
+
+# --- 5. Suspicious content / payload --------------------------------
+# SQL injection keywords in the URI ("union" followed by "select").
+alert http $EXTERNAL_NET any -> $HOME_NET any ( msg:"LOCAL HTTP SQL injection UNION SELECT in URI"; flow:to_server,established; http_uri; content:"union",nocase; content:"select",nocase,distance 0; classtype:web-application-attack; sid:1000005; rev:1; )
+
+# --- 6. Repeated connection / request behavior ----------------------
+# Request flood: one source issuing a high rate of HTTP GETs.
+# (v1: before tuning)
+# browser page load fetching many assets tripped the v1 threshold.
+alert http $EXTERNAL_NET any -> $HOME_NET any ( msg:"LOCAL HTTP high-rate GET requests from single source"; flow:to_server,established; http_method; content:"GET"; detection_filter:track by_src, count 50, seconds 10; classtype:attempted-dos; sid:1000006; rev:1; )
+
+# --- 7. Authentication-related activity -----------------------------
+# Repeated FTP login failures (server reply "530") to the same client.
+# One typo is normal; more than 5 failures in 60 s suggests password guessing.
+alert tcp $HOME_NET 21 -> $EXTERNAL_NET any ( msg:"LOCAL AUTH repeated FTP login failures"; flow:to_client,established; content:"530 ",depth 4; detection_filter:track by_dst, count 5, seconds 60; classtype:unsuccessful-user; sid:1000007; rev:1; )
+
+# --- 8. Additional rule: plaintext credentials over HTTP ------------
+# HTTP Basic authentication sent to the server. Credentials are only
+# base64-encoded, so anyone on the path can read them.
+alert http $EXTERNAL_NET any -> $HOME_NET any ( msg:"LOCAL HTTP Basic auth credentials sent in cleartext"; flow:to_server,established; http_header:field authorization; content:"Basic ",depth 6; classtype:policy-violation; sid:1000008; rev:1; )
+
+# --- 9. Additional rule: repeated SSH connection attempts ----------
+# More than 5 new SSH connections from one source in 60 s: likely password guessing.
+alert tcp $EXTERNAL_NET any -> $HOME_NET 22 ( msg:"LOCAL AUTH repeated SSH connection attempts"; flags:S; detection_filter:track by_src, count 5, seconds 60; classtype:attempted-user; sid:1000009; rev:1; )
