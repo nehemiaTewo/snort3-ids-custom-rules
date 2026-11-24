@@ -1,0 +1,2 @@
+config/snort_defaults.lua linguist-vendored
+report/report.html linguist-documentation
